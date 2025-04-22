@@ -1,2 +1,2 @@
 # WorldExplorer
-: Development of a React Application Using REST Countries API
+Development of a React Application Using REST Countries API
