@@ -32,3 +32,6 @@ if (process.env.NODE_ENV !== "production") {
     console.log(`Server running locally on port ${PORT}`);
   });
 }
+
+// For Vercel serverless function
+module.exports = app;
