@@ -11,7 +11,7 @@ function Header() {
   // Logout function
   const handleLogout = async () => {
     try {
-      await axios.post("http://localhost:5002/api/user/logout", {}, { withCredentials: true });
+      await axios.post("https://world-explorer-seven.vercel.app/api/user/logout", {}, { withCredentials: true });
       localStorage.removeItem("auth_token"); // Remove the token from localStorage
       setIsAuthenticated(false); // Update global authentication status
       navigate("/login"); // Redirect to the login page

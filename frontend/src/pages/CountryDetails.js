@@ -21,7 +21,7 @@ function CountryDetails() {
       try {
         setLoading(true);
         setError(""); // Reset error state
-        const response = await axios.get(`http://localhost:5002/api/countries/alpha/${encodeURIComponent(code)}`);
+        const response = await axios.get(`https://world-explorer-seven.vercel.app/api/countries/alpha/${encodeURIComponent(code)}`);
         setCountry(response.data); // Set the fetched country data
         setLoading(false);
       } catch (err) {

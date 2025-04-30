@@ -68,7 +68,7 @@ function SignUp() {
 
     try {
       const response = await axios.post(
-        "http://localhost:5002/api/user/register",
+        "https://world-explorer-seven.vercel.app/api/user/register",
         formData
       );
 

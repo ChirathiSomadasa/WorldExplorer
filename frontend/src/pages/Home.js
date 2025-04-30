@@ -87,7 +87,7 @@ function Home() {
   useEffect(() => {
     const fetchFilters = async () => {
       try {
-        const response = await axios.get("http://localhost:5002/api/countries/filters")
+        const response = await axios.get("https://world-explorer-seven.vercel.app/api/countries/filters")
         setAvailableRegions(response.data.regions)
         setAvailableLanguages(response.data.languages)
       } catch (err) {
@@ -102,7 +102,7 @@ function Home() {
     const fetchCountries = async () => {
       setLoading(true)
       try {
-        const response = await axios.get("http://localhost:5002/api/countries/all", {
+        const response = await axios.get("https://world-explorer-seven.vercel.app/api/countries/all", {
           params: {
             page: currentPage,
             limit: 12,
@@ -135,7 +135,7 @@ function Home() {
       if (!token) return
 
       try {
-        const response = await axios.get("http://localhost:5002/api/user/favorites", {
+        const response = await axios.get("https://world-explorer-seven.vercel.app/api/user/favorites", {
           headers: { Authorization: `Bearer ${token}` },
         })
         setFavorites(response.data.favorites)
@@ -189,7 +189,7 @@ function Home() {
 
     try {
       const response = await axios.post(
-        "http://localhost:5002/api/user/favorites",
+        "https://world-explorer-seven.vercel.app/api/user/favorites",
         { countryCode: countryName },
         { headers: { Authorization: `Bearer ${token}` } },
       )
