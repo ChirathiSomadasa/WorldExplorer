@@ -1,52 +1,106 @@
-import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
+import { useState, useEffect, useRef } from "react"
+import { Link } from "react-router-dom"
+import axios from "axios"
 import {
   Search as SearchIcon,
   Favorite as FavoriteIcon,
   FavoriteBorder as FavoriteBorderIcon,
   FilterAlt as FilterIcon,
   Close as CloseIcon,
-} from "@mui/icons-material";
-import HomeLandingPageImage from "../images/home.jpg";
+  ExploreOutlined as ExploreIcon,
+  TravelExplore as TravelExploreIcon,
+  Public as PublicIcon,
+} from "@mui/icons-material"
+import HomeLandingPageImage from "../images/home.jpg"
+import WelcomeImage from "../images/welcome.jpg" // Add this image to your project
+import { showSuccessAlert, showErrorAlert, showInfoAlert } from "../utils/Alert"
+import "./animations.css" // Import animations.css
 
 function Home() {
-  const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [countries, setCountries] = useState([]);
-  const [favorites, setFavorites] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("")
+  const [countries, setCountries] = useState([])
+  const [favorites, setFavorites] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
 
   // Filter states
   const [filters, setFilters] = useState({
     region: "",
     language: "",
-  });
-  const [showFilters, setShowFilters] = useState(false);
-  const [availableLanguages, setAvailableLanguages] = useState([]);
-  const [availableRegions, setAvailableRegions] = useState([]);
+  })
+  const [showFilters, setShowFilters] = useState(false)
+  const [availableLanguages, setAvailableLanguages] = useState([])
+  const [availableRegions, setAvailableRegions] = useState([])
+
+  // Refs for animated elements
+  const animatedElements = useRef([])
+  const featureRefs = useRef([])
+  const countryRefs = useRef([])
+
+  // Set up intersection observer for scroll animations
+  useEffect(() => {
+    const observerOptions = {
+      threshold: 0.1,
+      rootMargin: "0px 0px -50px 0px",
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("fade-in-visible")
+        }
+      })
+    }, observerOptions)
+
+    // Observe all elements with fade-in class
+    document.querySelectorAll(".fade-in").forEach((el) => {
+      observer.observe(el)
+      animatedElements.current.push(el)
+    })
+
+    // Add staggered delays to features
+    featureRefs.current.forEach((feature, index) => {
+      if (feature) {
+        feature.style.transitionDelay = `${index * 0.15}s`
+      }
+    })
+
+    // Add staggered delays to country cards
+    countryRefs.current.forEach((card, index) => {
+      if (card) {
+        card.style.transitionDelay = `${index * 0.05}s`
+      }
+    })
+
+    return () => {
+      if (animatedElements.current.length > 0) {
+        animatedElements.current.forEach((el) => {
+          if (el) observer.unobserve(el)
+        })
+      }
+    }
+  }, [countries]) // Re-run when countries change to observe new elements
 
   // Fetch all available regions and languages dynamically
   useEffect(() => {
     const fetchFilters = async () => {
       try {
-        const response = await axios.get("http://localhost:5002/api/countries/filters");
-        setAvailableRegions(response.data.regions);
-        setAvailableLanguages(response.data.languages);
+        const response = await axios.get("http://localhost:5002/api/countries/filters")
+        setAvailableRegions(response.data.regions)
+        setAvailableLanguages(response.data.languages)
       } catch (err) {
-        setError("Failed to fetch filters");
+        showErrorAlert("Failed to Load Filters", "Could not load regions or languages.")
       }
-    };
-    fetchFilters();
-  }, []);
+    }
+    fetchFilters()
+  }, [])
 
   // Fetch countries with pagination and filters
   useEffect(() => {
     const fetchCountries = async () => {
-      setLoading(true);
+      setLoading(true)
       try {
         const response = await axios.get("http://localhost:5002/api/countries/all", {
           params: {
@@ -56,92 +110,102 @@ function Home() {
             region: filters.region,
             language: filters.language,
           },
-        });
-        setCountries(response.data.data);
-        setTotalPages(response.data.totalPages);
-        setLoading(false);
+        })
+
+        setCountries(response.data.data)
+        setTotalPages(response.data.totalPages)
+        setLoading(false)
+
+        if (response.data.data.length === 0) {
+          showInfoAlert("No Results Found", "Try adjusting your search or filters.")
+        }
       } catch (err) {
-        setError("Failed to fetch countries");
-        setLoading(false);
+        setError("Failed to fetch countries")
+        showErrorAlert("Fetch Error", "Unable to retrieve country data at this time.")
+        setLoading(false)
       }
-    };
-    fetchCountries();
-  }, [currentPage, filters, searchQuery]);
+    }
+    fetchCountries()
+  }, [currentPage, filters, searchQuery])
 
   // Fetch user favorites when the component loads
   useEffect(() => {
     const fetchFavorites = async () => {
-      const token = localStorage.getItem("auth_token"); // Retrieve token from localStorage
-      if (!token) {
-        return; // No need to fetch if the user isn't logged in
-      }
+      const token = localStorage.getItem("auth_token") // Retrieve token from localStorage
+      if (!token) return
 
       try {
         const response = await axios.get("http://localhost:5002/api/user/favorites", {
-          headers: { Authorization: `Bearer ${token}` }, // Send token in Authorization header
-        });
-        setFavorites(response.data.favorites); // Update favorites state
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        setFavorites(response.data.favorites)
       } catch (err) {
-        console.error("Error fetching favorites:", err.response?.data || err.message);
-        alert("Failed to fetch favorites.");
+        console.error("Error fetching favorites:", err.response?.data || err.message)
       }
-    };
-
-    fetchFavorites(); // Call the function
-  }, []); // Empty dependency array ensures this runs only once on component mount
+    }
+    fetchFavorites()
+  }, [])
 
   // Handle search input change
   const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value);
-    setCurrentPage(1); // Reset to first page when searching
-  };
+    setSearchQuery(e.target.value)
+    setCurrentPage(1)
+  }
 
   // Handle filter changes
   const handleFilterChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value } = e.target
     setFilters((prev) => ({
       ...prev,
       [name]: value,
-    }));
-    setCurrentPage(1); // Reset to first page when applying filters
-  };
+    }))
+    setCurrentPage(1)
+  }
 
   // Apply filters
   const applyFilters = (e) => {
-    e.preventDefault();
-    // Filters are already applied via useEffect dependency
-  };
+    e.preventDefault()
+    // Already applied via useEffect
+  }
 
   // Reset filters
   const resetFilters = () => {
     setFilters({
       region: "",
       language: "",
-    });
-    setSearchQuery("");
-    setCurrentPage(1);
-  };
+    })
+    setSearchQuery("")
+    setCurrentPage(1)
+    showInfoAlert("Filters Reset", "All filters have been cleared.")
+  }
 
   // Toggle favorite status
   const toggleFavorite = async (countryName) => {
-    const token = localStorage.getItem("auth_token"); // Retrieve token from localStorage
+    const token = localStorage.getItem("auth_token")
     if (!token) {
-      alert("Please log in to save favorites.");
-      return;
+      showErrorAlert("Login Required", "Please log in to manage favorites.")
+      return
     }
 
     try {
       const response = await axios.post(
         "http://localhost:5002/api/user/favorites",
         { countryCode: countryName },
-        { headers: { Authorization: `Bearer ${token}` } } // Send token in Authorization header
-      );
-      setFavorites(response.data.favorites); // Update favorites state
+        { headers: { Authorization: `Bearer ${token}` } },
+      )
+
+      setFavorites(response.data.favorites) // Update favorites
+
+      if (response.data.favorites.includes(countryName)) {
+        showSuccessAlert("Added to Favorites", `${countryName} was successfully added.`)
+      } else {
+        showSuccessAlert("Removed from Favorites", `${countryName} was removed.`)
+      }
     } catch (err) {
-      console.error("Error toggling favorite:", err.response?.data || err.message);
-      alert("Failed to update favorites.");
+      showErrorAlert("Update Failed", "Could not update favorites. Please try again.")
+      console.error("Error updating favorites:", err.response?.data || err.message)
     }
-  };
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -156,10 +220,10 @@ function Home() {
           <div className="absolute inset-0 bg-[#046bba] mix-blend-multiply" aria-hidden="true"></div>
         </div>
         <div className="relative max-w-7xl mx-auto py-16 sm:py-24 px-4 sm:px-6 lg:px-8">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-white lg:text-6xl">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-white lg:text-6xl animate-title">
             Discover the World
           </h1>
-          <p className="mt-4 sm:mt-6 max-w-3xl text-lg sm:text-xl text-blue-100">
+          <p className="mt-4 sm:mt-6 max-w-3xl text-lg sm:text-xl text-blue-100 animate-subtitle">
             Explore detailed information about countries, cultures, and travel destinations around the globe.
           </p>
           {/* Search Bar with Filter Toggle */}
@@ -267,9 +331,113 @@ function Home() {
           </div>
         </div>
       </div>
+
+      {/* New Welcome Section with Animation */}
+      <div className="bg-white py-16 sm:py-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="lg:grid lg:grid-cols-2 lg:gap-8 lg:items-center">
+            {/* Left side - Welcome text */}
+            <div>
+              <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl fade-in">
+                Welcome to <span className="text-[#046bba] highlight">WorldExplorer</span>
+              </h2>
+              <div className="mt-3 max-w-3xl">
+                <p className="text-lg text-gray-500 fade-in" style={{ transitionDelay: "100ms" }}>
+                  Your journey to discover the world begins here. Explore fascinating facts about countries, immerse
+                  yourself in diverse cultures, and plan your next adventure with confidence.
+                </p>
+              </div>
+
+              <div className="mt-8 space-y-4">
+                {[
+                  {
+                    icon: <PublicIcon className="h-6 w-6 text-[#046bba]" />,
+                    title: "Comprehensive Information",
+                    description:
+                      "Access detailed data about 190+ countries including demographics, geography, and culture.",
+                  },
+                  {
+                    icon: <ExploreIcon className="h-6 w-6 text-[#046bba]" />,
+                    title: "Plan Your Travels",
+                    description:
+                      "Discover essential travel information to help you prepare for your next international adventure.",
+                  },
+                  {
+                    icon: <TravelExploreIcon className="h-6 w-6 text-[#046bba]" />,
+                    title: "Save Your Favorites",
+                    description:
+                      "Create a personalized collection of countries you've visited or plan to explore in the future.",
+                  },
+                ].map((feature, index) => (
+                  <div
+                    className="flex items-center fade-in"
+                    key={index}
+                    ref={(el) => (featureRefs.current[index] = el)}
+                    style={{ transitionDelay: `${(index + 1) * 150}ms` }}
+                  >
+                    <div className="flex-shrink-0">{feature.icon}</div>
+                    <div className="ml-4">
+                      <h3 className="text-lg font-medium text-gray-900">{feature.title}</h3>
+                      <p className="mt-1 text-gray-500">{feature.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-8 fade-in" style={{ transitionDelay: "600ms" }}>
+                <Link
+                  to="/about"
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-[#046bba] hover:bg-[#035ca1] pulse-animation"
+                >
+                  Learn More About Us
+                </Link>
+              </div>
+            </div>
+
+            {/* Right side - Image */}
+            <div className="mt-10 lg:mt-0 fade-in" style={{ transitionDelay: "200ms" }}>
+              <div className="relative">
+                <img
+                  className="rounded-lg shadow-xl"
+                  src={WelcomeImage || "/placeholder.svg?height=500&width=800"}
+                  alt="People exploring the world"
+                />
+
+                {/* Moving text animation */}
+                <div className="absolute top-4 left-4 bg-white bg-opacity-90 rounded-lg p-3 shadow-md transform -rotate-2 animate-float">
+                  <p className="text-sm font-medium text-[#046bba]">Explore 7 continents</p>
+                </div>
+                <div className="absolute bottom-4 right-4 bg-white bg-opacity-90 rounded-lg p-3 shadow-md transform rotate-2 animate-float-delayed">
+                  <p className="text-sm font-medium text-[#046bba]">Discover new cultures</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Section */}
+      <div className="bg-gray-100 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+            {[
+              { number: "190+", label: "Countries" },
+              { number: "7", label: "Continents" },
+              { number: "1000+", label: "Cities" },
+              { number: "8B+", label: "People" },
+            ].map((stat, index) => (
+              <div key={index} className="fade-in stat-item" style={{ transitionDelay: `${index * 100}ms` }}>
+                <span className="block text-3xl sm:text-4xl font-bold text-[#046bba]">{stat.number}</span>
+                <span className="block text-gray-500 mt-1">{stat.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* Featured Countries Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 fade-in">
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-0">Featured Countries</h2>
           {/* Active filters display */}
           <div className="flex flex-wrap items-center gap-2">
@@ -325,10 +493,12 @@ function Home() {
         )}
         {!loading && !error && countries.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {countries.map((country) => (
+            {countries.map((country, index) => (
               <div
                 key={country.name}
-                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300"
+                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 fade-in"
+                ref={(el) => (countryRefs.current[index] = el)}
+                style={{ transitionDelay: `${index * 50}ms` }}
               >
                 <div className="p-4 sm:p-6">
                   <div className="flex justify-between items-start">
@@ -379,7 +549,7 @@ function Home() {
         )}
         {/* Pagination Controls */}
         {!loading && !error && countries.length > 0 && (
-          <div className="flex justify-center mt-6 sm:mt-8">
+          <div className="flex justify-center mt-6 sm:mt-8 fade-in">
             <nav className="inline-flex rounded-md shadow-sm" aria-label="Pagination">
               <button
                 onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
@@ -403,7 +573,7 @@ function Home() {
         )}
       </div>
     </div>
-  );
+  )
 }
 
-export default Home;
+export default Home
