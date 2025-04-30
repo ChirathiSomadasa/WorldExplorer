@@ -3,8 +3,8 @@ const axios = require("axios");
 
 const router = express.Router();
 
-// Base URL for REST Countries API
-const BASE_URL = "https://restcountries.com/v3.1";
+// Base URL from environment variable
+const BASE_URL = process.env.BASE_URL;
 
 //Get All Countries with Pagination and Filters
 router.get("/all", async (req, res) => {
