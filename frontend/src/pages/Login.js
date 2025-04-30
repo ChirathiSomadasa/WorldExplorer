@@ -117,7 +117,7 @@ function Login() {
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
-                    placeholder="Enter your email or phone"
+                    placeholder="Enter your email"
                     required
                   />
                 </div>
