@@ -25,10 +25,8 @@ mongoose
 app.use("/api/user", userRoute);
 app.use("/api/countries", countryRoute);
 
-// Start the server only if NOT in production (for local development)
+// Start the server
 const PORT = process.env.PORT || 5002;
-if (process.env.NODE_ENV !== "production") {
-  app.listen(PORT, () => {
-    console.log(`Server running locally on port ${PORT}`);
-  });
-}
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
