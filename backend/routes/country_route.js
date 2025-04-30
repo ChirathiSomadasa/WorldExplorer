@@ -2,7 +2,7 @@ const express = require("express");
 const axios = require("axios");
 
 const router = express.Router();
-
+require("dotenv").config();
 // Base URL from environment variable
 const BASE_URL = process.env.BASE_URL;
 
