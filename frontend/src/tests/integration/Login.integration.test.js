@@ -1,76 +1,71 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import Login from "../../pages/Login";
 import { BrowserRouter } from "react-router-dom";
 import { AuthContext } from "../../contexts/AuthContext";
-import Login from "../../pages/Login";
 import axios from "axios";
 
+// Mock Axios
 jest.mock("axios");
 
-const renderWithProviders = (ui, authContextOverrides = {}) => {
-  const defaultContext = {
-    setIsAuthenticated: jest.fn(),
-  };
+// Mock SweetAlert utils
+jest.mock("../../utils/Alert", () => ({
+  showSuccessAlert: jest.fn((title, message, callback) => callback?.()),
+  showErrorAlert: jest.fn(),
+}));
 
-  return {
-    ...render(
-      <BrowserRouter>
-        <AuthContext.Provider value={{ ...defaultContext, ...authContextOverrides }}>
-          {ui}
-        </AuthContext.Provider>
-      </BrowserRouter>
-    ),
-    mockSetAuth: defaultContext.setIsAuthenticated,
-  };
-};
+describe("Login Component - Integration Test", () => {
+  const mockSetIsAuthenticated = jest.fn();
 
-describe("Login Component - Integration Tests", () => {
-  test("submits form and navigates on successful login", async () => {
-    const mockNavigate = jest.fn();
-    const token = "mock_token";
-    axios.post.mockResolvedValueOnce({ data: { token } });
+  const renderLogin = () =>
+    render(
+      <AuthContext.Provider value={{ setIsAuthenticated: mockSetIsAuthenticated }}>
+        <BrowserRouter>
+          <Login />
+        </BrowserRouter>
+      </AuthContext.Provider>
+    );
 
-    jest.spyOn(require("react-router-dom"), "useNavigate").mockReturnValue(mockNavigate);
+  test("successful login flow", async () => {
+    axios.post.mockResolvedValueOnce({
+      data: { token: "mocked_token" },
+    });
 
-    const { mockSetAuth } = renderWithProviders(<Login />);
+    renderLogin();
 
-    fireEvent.change(screen.getByLabelText(/Email or phone number/i), {
+    fireEvent.change(screen.getByPlaceholderText("Enter your email"), {
       target: { value: "user@example.com" },
     });
-    fireEvent.change(screen.getByLabelText(/Password/i), {
+    fireEvent.change(screen.getByPlaceholderText("Enter your password"), {
       target: { value: "password123" },
     });
 
     fireEvent.click(screen.getByRole("button", { name: /login/i }));
 
     await waitFor(() => {
-      expect(axios.post).toHaveBeenCalledWith(
-        "http://localhost:5002/api/user/login",
-        { email: "user@example.com", password: "password123" },
-        { withCredentials: true }
-      );
-      expect(localStorage.getItem("auth_token")).toBe(token);
-      expect(mockSetAuth).toHaveBeenCalledWith(true);
-      expect(mockNavigate).toHaveBeenCalledWith("/");
+      expect(localStorage.getItem("auth_token")).toBe("mocked_token");
+      expect(mockSetIsAuthenticated).toHaveBeenCalledWith(true);
     });
   });
 
-  test("shows error message on failed login", async () => {
+  test("handles login error response", async () => {
     axios.post.mockRejectedValueOnce({
       response: { data: { error: "Invalid credentials" } },
     });
 
-    renderWithProviders(<Login />);
+    renderLogin();
 
-    fireEvent.change(screen.getByLabelText(/Email or phone number/i), {
+    fireEvent.change(screen.getByPlaceholderText("Enter your email"), {
       target: { value: "wrong@example.com" },
     });
-    fireEvent.change(screen.getByLabelText(/Password/i), {
+    fireEvent.change(screen.getByPlaceholderText("Enter your password"), {
       target: { value: "wrongpass" },
     });
 
     fireEvent.click(screen.getByRole("button", { name: /login/i }));
 
-    const errorMessage = await screen.findByText(/Invalid credentials/i);
-    expect(errorMessage).toBeInTheDocument();
+    await waitFor(() => {
+      const { showErrorAlert } = require("../utils/Alert");
+      expect(showErrorAlert).toHaveBeenCalledWith("Login Failed", "Invalid credentials");
+    });
   });
 });

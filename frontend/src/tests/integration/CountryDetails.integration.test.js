@@ -1,54 +1,42 @@
-// src/tests/integration/CountryDetails.integration.test.js
-import { render, screen, waitFor } from "@testing-library/react";
-import CountryDetails from "../../pages/CountryDetails";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
-import axios from "axios";
+import React from "react"
+import { render, screen, waitFor } from "@testing-library/react"
+import CountryDetails from "../../pages/CountryDetails"
+import { MemoryRouter, Route, Routes } from "react-router-dom"
+import axios from "axios"
 
-jest.mock("axios");
+// Mock axios
+jest.mock("axios")
 
 const mockCountryData = {
-  name: "France",
-  capital: "Paris",
-  population: 67000000,
-  region: "Europe",
-  flag: "https://flagcdn.com/fr.svg",
-  languages: "French"
-};
+  name: "United States",
+  capital: "Washington D.C.",
+  population: 331002651,
+  region: "Americas",
+  flag: "https://flagcdn.com/us.svg",
+  languages: ["English"]
+}
 
-const renderComponent = () =>
-  render(
-    <MemoryRouter initialEntries={["/country/FR"]}>
-      <Routes>
-        <Route path="/country/:code" element={<CountryDetails />} />
-      </Routes>
-    </MemoryRouter>
-  );
+describe("CountryDetails Integration Tests", () => {
+  beforeEach(() => {
+    axios.get.mockResolvedValue({ data: mockCountryData })
+  })
 
-describe("CountryDetails - Integration Tests", () => {
-  afterEach(() => jest.clearAllMocks());
-
-  test("renders country details after successful fetch", async () => {
-    axios.get.mockResolvedValueOnce({ data: mockCountryData });
-
-    renderComponent();
-
-    expect(screen.getByText(/Loading country details/i)).toBeInTheDocument();
+  test("renders fetched country details", async () => {
+    render(
+      <MemoryRouter initialEntries={["/countries/US"]}>
+        <Routes>
+          <Route path="/countries/:code" element={<CountryDetails />} />
+        </Routes>
+      </MemoryRouter>
+    )
 
     await waitFor(() => {
-      expect(screen.getByText("France")).toBeInTheDocument();
-      expect(screen.getByText("Paris")).toBeInTheDocument();
-      expect(screen.getByText("Europe")).toBeInTheDocument();
-      expect(screen.getByText("French")).toBeInTheDocument();
-    });
-  });
+      expect(screen.getByText("United States")).toBeInTheDocument()
+    })
 
-  test("shows error message if fetch fails", async () => {
-    axios.get.mockRejectedValueOnce(new Error("API failure"));
-
-    renderComponent();
-
-    await waitFor(() => {
-      expect(screen.getByText(/Failed to fetch country details/i)).toBeInTheDocument();
-    });
-  });
-});
+    expect(screen.getByText("Washington D.C.")).toBeInTheDocument()
+    expect(screen.getByText("331,002,651")).toBeInTheDocument()
+    expect(screen.getByText("Americas")).toBeInTheDocument()
+    expect(screen.getByText("English")).toBeInTheDocument()
+  })
+})

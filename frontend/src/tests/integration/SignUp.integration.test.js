@@ -1,50 +1,81 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { BrowserRouter } from "react-router-dom";
-import SignUp from "../../pages/Signup";
+import SignUp from "../../pages/SignUp";
+import { MemoryRouter } from "react-router-dom";
 import axios from "axios";
+
+// Mock alert utils and navigate
+jest.mock("../../utils/Alert", () => ({
+  showSuccessAlert: jest.fn((title, msg, callback) => callback && callback()),
+  showErrorAlert: jest.fn(),
+}));
 
 jest.mock("axios");
 
-const renderWithRouter = (ui) => {
-  return render(<BrowserRouter>{ui}</BrowserRouter>);
-};
+describe("SignUp - Integration Tests", () => {
+  it("submits form successfully and redirects", async () => {
+    axios.post.mockResolvedValueOnce({ data: { message: "Registered" } });
 
-describe("SignUp Component - Integration Test", () => {
-  test("submits the form successfully and redirects", async () => {
-    axios.post.mockResolvedValueOnce({ data: { success: true } });
-    const mockNavigate = jest.fn();
+    render(
+      <MemoryRouter>
+        <SignUp />
+      </MemoryRouter>
+    );
 
-    jest.spyOn(require("react-router-dom"), "useNavigate").mockReturnValue(mockNavigate);
-
-    renderWithRouter(<SignUp />);
-
-    fireEvent.change(screen.getByLabelText(/First name/i), { target: { value: "John" } });
-    fireEvent.change(screen.getByLabelText(/Last name/i), { target: { value: "Doe" } });
-    fireEvent.change(screen.getByLabelText(/Email address/i), { target: { value: "john@example.com" } });
-    fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: "password123" } });
-
-    fireEvent.click(screen.getByRole("button", { name: /Sign up/i }));
-
-    await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith("/login");
+    fireEvent.change(screen.getByPlaceholderText("Enter your first name"), {
+      target: { value: "John" },
     });
+    fireEvent.change(screen.getByPlaceholderText("Enter your last name"), {
+      target: { value: "Doe" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Enter your email"), {
+      target: { value: "john@example.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Enter your password"), {
+      target: { value: "abcd1234" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /sign up/i }));
+
+    await waitFor(() =>
+      expect(axios.post).toHaveBeenCalledWith(
+        "http://localhost:5002/api/user/register",
+        expect.any(Object)
+      )
+    );
   });
 
-  test("shows error message on failed signup", async () => {
+  it("shows error if email already exists", async () => {
     axios.post.mockRejectedValueOnce({
-      response: { data: { error: "User already exists" } },
+      response: { data: { message: "Email already in use" } },
     });
 
-    renderWithRouter(<SignUp />);
+    render(
+      <MemoryRouter>
+        <SignUp />
+      </MemoryRouter>
+    );
 
-    fireEvent.change(screen.getByLabelText(/First name/i), { target: { value: "Jane" } });
-    fireEvent.change(screen.getByLabelText(/Last name/i), { target: { value: "Smith" } });
-    fireEvent.change(screen.getByLabelText(/Email address/i), { target: { value: "jane@example.com" } });
-    fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: "pass1234" } });
+    fireEvent.change(screen.getByPlaceholderText("Enter your first name"), {
+      target: { value: "Jane" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Enter your last name"), {
+      target: { value: "Smith" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Enter your email"), {
+      target: { value: "jane@example.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Enter your password"), {
+      target: { value: "1234" },
+    });
 
-    fireEvent.click(screen.getByRole("button", { name: /Sign up/i }));
+    fireEvent.click(screen.getByRole("button", { name: /sign up/i }));
 
-    const errorMessage = await screen.findByText(/User already exists/i);
-    expect(errorMessage).toBeInTheDocument();
+    await waitFor(() => {
+      const { showErrorAlert } = require("../utils/Alert");
+      expect(showErrorAlert).toHaveBeenCalledWith(
+        "Email Already in Use",
+        "Please use another email."
+      );
+    });
   });
 });

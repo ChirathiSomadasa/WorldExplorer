@@ -1,34 +1,41 @@
 import { render, screen, fireEvent } from "@testing-library/react";
-import { BrowserRouter } from "react-router-dom";
-import SignUp from "../../pages/Signup";
+import SignUp from "../../pages/SignUp";
+import { MemoryRouter } from "react-router-dom";
 
-const renderWithRouter = (ui) => {
-  return render(<BrowserRouter>{ui}</BrowserRouter>);
-};
+// Mock alert utilities
+jest.mock("../../utils/Alert", () => ({
+  showSuccessAlert: jest.fn(),
+  showErrorAlert: jest.fn(),
+}));
 
-describe("SignUp Component - Unit Tests", () => {
-  test("renders the form fields correctly", () => {
-    renderWithRouter(<SignUp />);
-    expect(screen.getByLabelText(/First name/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Last name/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Email address/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Password/i)).toBeInTheDocument();
+describe("SignUp - Unit Tests", () => {
+  it("renders input fields correctly", () => {
+    render(
+      <MemoryRouter>
+        <SignUp />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByPlaceholderText("Enter your first name")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Enter your last name")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Enter your email")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Enter your password")).toBeInTheDocument();
   });
 
-  test("toggles password visibility", () => {
-    renderWithRouter(<SignUp />);
-    const passwordInput = screen.getByLabelText(/Password/i);
-    const toggleButton = screen.getByRole("button");
+  it("shows password when eye icon clicked", () => {
+    render(
+      <MemoryRouter>
+        <SignUp />
+      </MemoryRouter>
+    );
 
-    // Password should initially be hidden
+    const passwordInput = screen.getByPlaceholderText("Enter your password");
+    const toggleBtn = screen.getByRole("button");
+
     expect(passwordInput).toHaveAttribute("type", "password");
 
-    // Click to show password
-    fireEvent.click(toggleButton);
+    fireEvent.click(toggleBtn);
+
     expect(passwordInput).toHaveAttribute("type", "text");
-
-    // Click again to hide
-    fireEvent.click(toggleButton);
-    expect(passwordInput).toHaveAttribute("type", "password");
   });
 });

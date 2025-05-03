@@ -1,22 +1,45 @@
-// src/tests/unit/CountryDetails.unit.test.js
-import { render, screen } from "@testing-library/react";
-import CountryDetails from "../../pages/CountryDetails";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import React from "react"
+import { render, screen } from "@testing-library/react"
+import CountryDetails from "../../pages/CountryDetails"
+import { MemoryRouter, Route, Routes } from "react-router-dom"
+import axios from "axios"
 
-describe("CountryDetails - Unit Tests", () => {
-  test("shows loading message initially", () => {
+// Mock axios
+jest.mock("axios")
+
+// Mock useParams from react-router-dom
+jest.mock("react-router-dom", () => {
+  const originalModule = jest.requireActual("react-router-dom")
+  return {
+    ...originalModule,
+    useParams: () => ({ code: "US" }),
+    Link: (props) => <a {...props}>{props.children}</a>,
+  }
+})
+
+describe("CountryDetails Unit Tests", () => {
+  test("shows loading initially", () => {
     render(
-      <MemoryRouter initialEntries={["/country/FR"]}>
+      <MemoryRouter>
+        <CountryDetails />
+      </MemoryRouter>
+    )
+
+    expect(screen.getByText(/loading country details/i)).toBeInTheDocument()
+  })
+
+  test("shows error message on fetch failure", async () => {
+    axios.get.mockRejectedValue(new Error("Network Error"))
+
+    render(
+      <MemoryRouter initialEntries={["/countries/US"]}>
         <Routes>
-          <Route path="/country/:code" element={<CountryDetails />} />
+          <Route path="/countries/:code" element={<CountryDetails />} />
         </Routes>
       </MemoryRouter>
-    );
-    expect(screen.getByText(/Loading country details.../i)).toBeInTheDocument();
-  });
+    )
 
-  test("displays error message when error state is set", async () => {
-    // Directly override useEffect to simulate error state (not normally recommended)
-    jest.spyOn(global, "fetch").mockRejectedValue(new Error("API Error"));
-  });
-});
+    const errorMessage = await screen.findByText(/failed to fetch country details/i)
+    expect(errorMessage).toBeInTheDocument()
+  })
+})

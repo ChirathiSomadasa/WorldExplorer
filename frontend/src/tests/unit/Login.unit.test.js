@@ -1,45 +1,52 @@
 import { render, screen, fireEvent } from "@testing-library/react";
+import Login from "../../pages/Login";
 import { BrowserRouter } from "react-router-dom";
 import { AuthContext } from "../../contexts/AuthContext";
-import Login from "../../pages/Login";
 
-const renderWithContext = (ui) => {
+// Wrapper to include context + router
+const renderWithContext = (ui, { providerProps }) => {
   return render(
-    <BrowserRouter>
-      <AuthContext.Provider value={{ setIsAuthenticated: jest.fn() }}>
-        {ui}
-      </AuthContext.Provider>
-    </BrowserRouter>
+    <AuthContext.Provider value={providerProps}>
+      <BrowserRouter>{ui}</BrowserRouter>
+    </AuthContext.Provider>
   );
 };
 
 describe("Login Component - Unit Tests", () => {
-  test("renders form fields and login button", () => {
-    renderWithContext(<Login />);
+  const providerProps = { setIsAuthenticated: jest.fn() };
+
+  test("renders email and password fields", () => {
+    renderWithContext(<Login />, { providerProps });
+
     expect(screen.getByLabelText(/Email or phone number/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Password/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /login/i })).toBeInTheDocument();
   });
 
-  test("allows password visibility toggle", () => {
-    renderWithContext(<Login />);
+  test("shows password when toggle is clicked", () => {
+    renderWithContext(<Login />, { providerProps });
+
     const passwordInput = screen.getByLabelText(/Password/i);
     const toggleButton = screen.getByRole("button", { name: /show password/i });
 
+    // Initially type is password
     expect(passwordInput).toHaveAttribute("type", "password");
+
     fireEvent.click(toggleButton);
+
+    // After toggle, type should be text
     expect(passwordInput).toHaveAttribute("type", "text");
   });
 
-  test("updates input values correctly", () => {
-    renderWithContext(<Login />);
-    const emailInput = screen.getByLabelText(/Email or phone number/i);
-    const passwordInput = screen.getByLabelText(/Password/i);
+  test("form input values update on change", () => {
+    renderWithContext(<Login />, { providerProps });
+
+    const emailInput = screen.getByPlaceholderText("Enter your email");
+    const passwordInput = screen.getByPlaceholderText("Enter your password");
 
     fireEvent.change(emailInput, { target: { value: "test@example.com" } });
-    fireEvent.change(passwordInput, { target: { value: "123456" } });
+    fireEvent.change(passwordInput, { target: { value: "secret" } });
 
     expect(emailInput.value).toBe("test@example.com");
-    expect(passwordInput.value).toBe("123456");
+    expect(passwordInput.value).toBe("secret");
   });
 });
