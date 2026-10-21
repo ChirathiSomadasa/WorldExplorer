@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Link } from "react-router-dom"
 import axios from "axios"
 import {
@@ -35,9 +35,19 @@ function Home() {
   const [availableRegions, setAvailableRegions] = useState([])
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false)
 
+  // Case-insensitive helper to check if a country is in favorites
+  const isFavorite = useCallback(
+    (name) => {
+      if (!name || !favorites || favorites.length === 0) return false
+      const normalized = name.trim().toLowerCase()
+      return favorites.some((f) => typeof f === "string" && f.trim().toLowerCase() === normalized)
+    },
+    [favorites],
+  )
+
   // Filter countries by favorites if favorites toggle is active
   const displayedCountries = showOnlyFavorites
-    ? countries.filter((c) => favorites.includes(c.name))
+    ? countries.filter((c) => isFavorite(c.name))
     : countries
 
   // Refs for animated elements
@@ -124,7 +134,7 @@ function Home() {
 
         let list = response.data.data || []
         if (showOnlyFavorites) {
-          list = list.filter((c) => favorites.includes(c.name))
+          list = list.filter((c) => isFavorite(c.name))
         }
 
         setCountries(list)
@@ -145,7 +155,7 @@ function Home() {
       }
     }
     fetchCountries()
-  }, [currentPage, filters, searchQuery, showOnlyFavorites, favorites])
+  }, [currentPage, filters, searchQuery, showOnlyFavorites, favorites, isFavorite])
 
   // Fetch user favorites when the component loads
   useEffect(() => {
@@ -539,9 +549,9 @@ function Home() {
                     <button
                       onClick={() => toggleFavorite(country.name)}
                       className="text-gray-400 hover:text-red-500 focus:outline-none transition-colors"
-                      aria-label={favorites.includes(country.name) ? "Remove from favorites" : "Add to favorites"}
+                      aria-label={isFavorite(country.name) ? "Remove from favorites" : "Add to favorites"}
                     >
-                      {favorites.includes(country.name) ? (
+                      {isFavorite(country.name) ? (
                         <FavoriteIcon className="h-5 w-5 sm:h-6 sm:w-6 text-red-500" />
                       ) : (
                         <FavoriteBorderIcon className="h-5 w-5 sm:h-6 sm:w-6" />
@@ -570,7 +580,7 @@ function Home() {
           </div>
         )}
         {/* Pagination Controls */}
-        {!loading && !error && countries.length > 0 && (
+        {!loading && !error && displayedCountries.length > 0 && totalPages > 1 && (
           <div className="flex justify-center mt-6 sm:mt-8 fade-in">
             <nav className="inline-flex rounded-md shadow-sm" aria-label="Pagination">
               <button

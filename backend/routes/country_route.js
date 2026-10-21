@@ -83,7 +83,7 @@ router.get("/all", async (req, res) => {
           .map((f) => f.trim().toLowerCase())
           .filter(Boolean);
         countries = countries.filter((country) =>
-          favList.includes(country.name.toLowerCase())
+          country.name && favList.includes(country.name.trim().toLowerCase())
         );
       }
     }
