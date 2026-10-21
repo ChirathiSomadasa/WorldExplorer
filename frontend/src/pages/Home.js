@@ -35,6 +35,11 @@ function Home() {
   const [availableRegions, setAvailableRegions] = useState([])
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false)
 
+  // Filter countries by favorites if favorites toggle is active
+  const displayedCountries = showOnlyFavorites
+    ? countries.filter((c) => favorites.includes(c.name))
+    : countries
+
   // Refs for animated elements
   const featureRefs = useRef([])
   const countryRefs = useRef([])
@@ -80,7 +85,7 @@ function Home() {
         if (el) observer.unobserve(el)
       })
     }
-  }, [countries]) // Re-run when countries change to observe new elements
+  }, [displayedCountries]) // Re-run when countries change to observe new elements
 
   // Fetch all available regions and languages dynamically
   useEffect(() => {
@@ -101,22 +106,37 @@ function Home() {
     const fetchCountries = async () => {
       setLoading(true)
       try {
+        const params = {
+          page: currentPage,
+          limit: 12,
+          name: searchQuery,
+          region: filters.region,
+          language: filters.language,
+        }
+
+        if (showOnlyFavorites) {
+          params.favorites = favorites.length > 0 ? favorites.join(",") : "__EMPTY__"
+        }
+
         const response = await axios.get("https://world-explorer-backend.vercel.app/api/countries/all", {
-          params: {
-            page: currentPage,
-            limit: 12,
-            name: searchQuery,
-            region: filters.region,
-            language: filters.language,
-          },
+          params,
         })
 
-        setCountries(response.data.data)
-        setTotalPages(response.data.totalPages)
+        let list = response.data.data || []
+        if (showOnlyFavorites) {
+          list = list.filter((c) => favorites.includes(c.name))
+        }
+
+        setCountries(list)
+        setTotalPages(response.data.totalPages || 1)
         setLoading(false)
 
-        if (response.data.data.length === 0) {
-          showInfoAlert("No Results Found", "Try adjusting your search or filters.")
+        if (list.length === 0) {
+          if (showOnlyFavorites) {
+            showInfoAlert("No Favorites Found", "You haven't added any countries to your favorites yet.")
+          } else {
+            showInfoAlert("No Results Found", "Try adjusting your search or filters.")
+          }
         }
       } catch (err) {
         setError("Failed to fetch countries")
@@ -458,7 +478,7 @@ function Home() {
             </div>
           </div>
         )}
-        {!loading && !error && countries.length === 0 && (
+        {!loading && !error && displayedCountries.length === 0 && (
           <div className="text-center py-10 bg-gray-50 rounded-lg">
             {showOnlyFavorites ? (
               <>
@@ -493,9 +513,9 @@ function Home() {
             )}
           </div>
         )}
-        {!loading && !error && countries.length > 0 && (
+        {!loading && !error && displayedCountries.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {countries.map((country, index) => (
+            {displayedCountries.map((country, index) => (
               <div
                 key={country.name}
                 className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 fade-in"
