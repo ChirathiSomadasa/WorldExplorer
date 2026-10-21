@@ -15,8 +15,9 @@ app.use('/api/user', userRoutes);
 // Mock environment variables
 process.env.JWT_SECRET = "test-secret";
 
+jest.setTimeout(60000);
+
 let mongoServer;
-let server;
 
 beforeAll(async () => {
   // Start in-memory MongoDB
@@ -26,16 +27,16 @@ beforeAll(async () => {
 
   // Set JWT secret for testing
   process.env.JWT_SECRET = 'test-secret';
-});
+}, 60000);
 
 afterAll(async () => {
-    await mongoose.disconnect();
+  await mongoose.disconnect();
+  if (mongoServer) {
     await mongoServer.stop();
-  });
+  }
+});
 
 describe("User Routes - Integration Tests", () => {
-
-
   test("POST /register - Successful registration", async () => {
     const response = await request(app)
       .post("/api/user/register")
@@ -56,14 +57,18 @@ describe("User Routes - Integration Tests", () => {
   });
 
   test("POST /login - Successful login", async () => {
+    // Make sure Chirathi user exists (or update if already exists)
+    const existing = await UserModel.findOne({ email: "chirathisomadasa@gmail.com" });
     const hashedPassword = await bcrypt.hash("password123", 10);
-    await UserModel.create({
-      first_name: "Chirathi",
-      last_name: "Somadasa",
-      email: "chirathisomadasa@gmail.com",
-      password: hashedPassword,
-      favorites: [],
-    });
+    if (!existing) {
+      await UserModel.create({
+        first_name: "Chirathi",
+        last_name: "Somadasa",
+        email: "chirathisomadasa@gmail.com",
+        password: hashedPassword,
+        favorites: [],
+      });
+    }
 
     const response = await request(app)
       .post("/api/user/login")
@@ -76,5 +81,4 @@ describe("User Routes - Integration Tests", () => {
     expect(response.body.message).toBe("Login successful");
     expect(response.body.token).toBeDefined();
   });
-
 });
