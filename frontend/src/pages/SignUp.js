@@ -67,7 +67,7 @@ function SignUp() {
     if (!validateForm()) return; // Stop submission if validation fails
 
     try {
-      const response = await axios.post(
+      await axios.post(
         "https://world-explorer-backend.vercel.app/api/user/register",
         formData
       );

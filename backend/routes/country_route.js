@@ -13,22 +13,36 @@ try {
   localCountries = null;
 }
 
-const formatCountry = (country) => ({
-  name: country.name?.common || (typeof country.name === "string" ? country.name : "Unknown"),
-  population: country.population || 0,
-  region: country.region || "Unknown",
-  languages: country.languages
-    ? Array.isArray(country.languages)
-      ? country.languages.join(", ")
-      : Object.values(country.languages).join(", ")
-    : "N/A",
-  flag: country.flags?.png || country.flags?.svg || (typeof country.flags === "string" ? country.flags : ""),
-  capital: country.capital
-    ? Array.isArray(country.capital)
-      ? country.capital[0]
-      : country.capital
-    : "N/A",
-});
+const formatCountry = (country) => {
+  let flag =
+    country.flags?.png ||
+    country.flags?.svg ||
+    (typeof country.flags === "string" ? country.flags : "");
+
+  // If flag is missing or from wikimedia (which often blocks hotlinking), fallback to flagcdn
+  if ((!flag || flag.includes("upload.wikimedia.org")) && country.cca2) {
+    flag = `https://flagcdn.com/w320/${country.cca2.toLowerCase()}.png`;
+  }
+
+  return {
+    name:
+      country.name?.common ||
+      (typeof country.name === "string" ? country.name : "Unknown"),
+    population: country.population || 0,
+    region: country.region || "Unknown",
+    languages: country.languages
+      ? Array.isArray(country.languages)
+        ? country.languages.join(", ")
+        : Object.values(country.languages).join(", ")
+      : "N/A",
+    flag,
+    capital: country.capital
+      ? Array.isArray(country.capital)
+        ? country.capital[0]
+        : country.capital
+      : "N/A",
+  };
+};
 
 // Helper to determine if we are in a test environment with mocked axios
 const isAxiosMocked = () =>

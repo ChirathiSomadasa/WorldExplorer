@@ -35,7 +35,6 @@ function Home() {
   const [availableRegions, setAvailableRegions] = useState([])
 
   // Refs for animated elements
-  const animatedElements = useRef([])
   const featureRefs = useRef([])
   const countryRefs = useRef([])
 
@@ -54,10 +53,11 @@ function Home() {
       })
     }, observerOptions)
 
+    const elementsToClean = []
     // Observe all elements with fade-in class
     document.querySelectorAll(".fade-in").forEach((el) => {
       observer.observe(el)
-      animatedElements.current.push(el)
+      elementsToClean.push(el)
     })
 
     // Add staggered delays to features
@@ -75,11 +75,9 @@ function Home() {
     })
 
     return () => {
-      if (animatedElements.current.length > 0) {
-        animatedElements.current.forEach((el) => {
-          if (el) observer.unobserve(el)
-        })
-      }
+      elementsToClean.forEach((el) => {
+        if (el) observer.unobserve(el)
+      })
     }
   }, [countries]) // Re-run when countries change to observe new elements
 

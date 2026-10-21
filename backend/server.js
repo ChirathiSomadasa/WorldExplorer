@@ -8,6 +8,9 @@ const countryRoute = require("./routes/country_route");
 
 dotenv.config();
 
+// Disable Mongoose command buffering so operations fail fast with clear errors instead of 10s timeouts
+mongoose.set("bufferCommands", false);
+
 const app = express();
 
 // Middleware
@@ -46,21 +49,53 @@ app.get("/", (req, res) => {
   });
 });
 
-// MongoDB Connection with timeout handling so serverless functions don't hang
-if (process.env.MONGO_URL) {
-  mongoose
-    .connect(process.env.MONGO_URL, {
+// Database connection helper for serverless environment
+let cachedDbPromise = null;
+
+const connectDB = async () => {
+  if (mongoose.connection.readyState >= 1) {
+    return;
+  }
+
+  if (!process.env.MONGO_URL) {
+    throw new Error("MONGO_URL environment variable is not defined");
+  }
+
+  if (!cachedDbPromise) {
+    cachedDbPromise = mongoose.connect(process.env.MONGO_URL, {
       dbName: "CountriesDB",
       serverSelectionTimeoutMS: 5000,
-    })
-    .then(() => console.log("Connected to MongoDB"))
-    .catch((err) => console.error("MongoDB connection error:", err.message));
-} else {
-  console.warn("MONGO_URL not defined; running without active MongoDB connection");
-}
+    });
+  }
 
-// Routes
-app.use("/api/user", userRoute);
+  try {
+    await cachedDbPromise;
+  } catch (err) {
+    cachedDbPromise = null;
+    throw err;
+  }
+};
+
+// Database connection middleware for user authentication and favorites routes
+app.use(
+  "/api/user",
+  async (req, res, next) => {
+    try {
+      await connectDB();
+      next();
+    } catch (err) {
+      console.error("Database connection error:", err.message);
+      return res.status(503).json({
+        error:
+          "Database unavailable. Please ensure your MongoDB Atlas cluster is active (not paused) and MONGO_URL in Vercel environment variables is correct.",
+        details: err.message,
+      });
+    }
+  },
+  userRoute
+);
+
+// Country routes (served directly from bundled dataset without database dependency)
 app.use("/api/countries", countryRoute);
 
 // 404 handler for unmatched routes

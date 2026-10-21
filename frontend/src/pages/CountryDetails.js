@@ -18,7 +18,6 @@ function CountryDetails() {
   const [error, setError] = useState("") // State for error
 
   // Refs for animated elements
-  const animatedElements = useRef([])
   const headerRef = useRef(null)
 
   useEffect(() => {
@@ -55,18 +54,17 @@ function CountryDetails() {
       })
     }, observerOptions)
 
+    const elementsToClean = []
     // Observe all elements with fade-in class
     document.querySelectorAll(".fade-in").forEach((el) => {
       observer.observe(el)
-      animatedElements.current.push(el)
+      elementsToClean.push(el)
     })
 
     return () => {
-      if (animatedElements.current.length > 0) {
-        animatedElements.current.forEach((el) => {
-          if (el) observer.unobserve(el)
-        })
-      }
+      elementsToClean.forEach((el) => {
+        if (el) observer.unobserve(el)
+      })
     }
   }, [country])
 
