@@ -57,6 +57,7 @@ router.get("/all", async (req, res) => {
   const name = req.query.name || "";
   const region = req.query.region || "";
   const language = req.query.language || "";
+  const favorites = req.query.favorites;
 
   try {
     let rawCountries;
@@ -71,6 +72,21 @@ router.get("/all", async (req, res) => {
     }
 
     let countries = rawCountries.map(formatCountry);
+
+    // Apply favorites filter if provided
+    if (typeof favorites === "string") {
+      if (favorites.trim() === "" || favorites === "__EMPTY__") {
+        countries = [];
+      } else {
+        const favList = favorites
+          .split(",")
+          .map((f) => f.trim().toLowerCase())
+          .filter(Boolean);
+        countries = countries.filter((country) =>
+          favList.includes(country.name.toLowerCase())
+        );
+      }
+    }
 
     // Apply filters
     if (name.trim() !== "") {
@@ -98,6 +114,7 @@ router.get("/all", async (req, res) => {
       data: paginatedCountries,
       totalPages: Math.ceil(countries.length / limit),
       currentPage: page,
+      totalCount: countries.length,
     });
   } catch (error) {
     console.error("Error fetching countries:", error.message);

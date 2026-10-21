@@ -33,6 +33,7 @@ function Home() {
   const [showFilters, setShowFilters] = useState(false)
   const [availableLanguages, setAvailableLanguages] = useState([])
   const [availableRegions, setAvailableRegions] = useState([])
+  const [showOnlyFavorites, setShowOnlyFavorites] = useState(false)
 
   // Refs for animated elements
   const featureRefs = useRef([])
@@ -124,7 +125,7 @@ function Home() {
       }
     }
     fetchCountries()
-  }, [currentPage, filters, searchQuery])
+  }, [currentPage, filters, searchQuery, showOnlyFavorites, favorites])
 
   // Fetch user favorites when the component loads
   useEffect(() => {
@@ -173,8 +174,20 @@ function Home() {
       language: "",
     })
     setSearchQuery("")
+    setShowOnlyFavorites(false)
     setCurrentPage(1)
     showInfoAlert("Filters Reset", "All filters have been cleared.")
+  }
+
+  // Toggle favorites filter
+  const handleToggleFavorites = () => {
+    const token = localStorage.getItem("auth_token")
+    if (!token && !showOnlyFavorites) {
+      showInfoAlert("Login Required", "Please log in to view and save your favorite countries.")
+      return
+    }
+    setShowOnlyFavorites((prev) => !prev)
+    setCurrentPage(1)
   }
 
   // Toggle favorite status
@@ -255,6 +268,31 @@ function Home() {
                   <FilterIcon className="h-5 w-5 mr-1" />
                   <span className="hidden sm:inline">Filters</span>
                 </button>
+                <button
+                  type="button"
+                  onClick={handleToggleFavorites}
+                  className={`ml-2 flex items-center justify-center px-4 py-3 border border-transparent text-base font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-white ${
+                    showOnlyFavorites
+                      ? "bg-red-500 hover:bg-red-600 text-white shadow-md"
+                      : "bg-[#298bd6] hover:bg-[#046bba] text-white"
+                  }`}
+                  aria-label={showOnlyFavorites ? "Show all countries" : "Show favorite countries"}
+                  title={showOnlyFavorites ? "Show all countries" : "Show favorite countries"}
+                >
+                  {showOnlyFavorites ? (
+                    <FavoriteIcon className="h-5 w-5 sm:mr-1 text-white" />
+                  ) : (
+                    <FavoriteBorderIcon className="h-5 w-5 sm:mr-1 text-white" />
+                  )}
+                  <span className="hidden sm:inline">
+                    {showOnlyFavorites ? "All" : "Favorites"}
+                  </span>
+                  {favorites.length > 0 && !showOnlyFavorites && (
+                    <span className="ml-1.5 px-1.5 py-0.5 text-xs font-bold rounded-full bg-red-500 text-white">
+                      {favorites.length}
+                    </span>
+                  )}
+                </button>
               </div>
             </form>
             {/* Filter Bar */}
@@ -308,6 +346,29 @@ function Home() {
                     </select>
                   </div>
                 </div>
+                <div className="mt-4 pt-3 border-t border-gray-200">
+                  <label className="flex items-center space-x-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      id="favoriteFilter"
+                      checked={showOnlyFavorites}
+                      onChange={(e) => {
+                        const token = localStorage.getItem("auth_token")
+                        if (!token && e.target.checked) {
+                          showInfoAlert("Login Required", "Please log in to view your favorite countries.")
+                          return
+                        }
+                        setShowOnlyFavorites(e.target.checked)
+                        setCurrentPage(1)
+                      }}
+                      className="h-4 w-4 text-red-500 rounded border-gray-300 focus:ring-red-400"
+                    />
+                    <FavoriteIcon className={`h-5 w-5 ${showOnlyFavorites ? "text-red-500" : "text-gray-400"}`} />
+                    <span className="text-sm font-medium text-gray-700">
+                      Show Favorites Only {favorites.length > 0 && `(${favorites.length} saved)`}
+                    </span>
+                  </label>
+                </div>
                 <div className="mt-4 flex justify-end space-x-3">
                   <button
                     type="button"
@@ -333,10 +394,32 @@ function Home() {
       {/* Featured Countries Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 fade-in">
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-0">Featured Countries</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-0 flex items-center">
+            {showOnlyFavorites ? (
+              <>
+                <FavoriteIcon className="h-7 w-7 text-red-500 mr-2" />
+                Favorite Countries ({favorites.length})
+              </>
+            ) : (
+              "Featured Countries"
+            )}
+          </h2>
           {/* Active filters display */}
           <div className="flex flex-wrap items-center gap-2">
-            {(filters.region || filters.language) && <span className="text-sm text-gray-500">Active filters:</span>}
+            {(filters.region || filters.language || showOnlyFavorites) && <span className="text-sm text-gray-500">Active filters:</span>}
+            {showOnlyFavorites && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                <FavoriteIcon className="h-3 w-3 mr-1 text-red-500" />
+                Favorites ({favorites.length})
+                <button
+                  onClick={() => setShowOnlyFavorites(false)}
+                  className="ml-1 text-red-500 hover:text-red-700"
+                  aria-label="Remove favorites filter"
+                >
+                  <CloseIcon className="h-3 w-3" />
+                </button>
+              </span>
+            )}
             {filters.region && (
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                 Region: {filters.region}
@@ -377,13 +460,37 @@ function Home() {
         )}
         {!loading && !error && countries.length === 0 && (
           <div className="text-center py-10 bg-gray-50 rounded-lg">
-            <p className="text-gray-500 text-lg">No countries found matching your criteria.</p>
-            <button
-              onClick={resetFilters}
-              className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-[#046bba] transition-colors"
-            >
-              Reset Filters
-            </button>
+            {showOnlyFavorites ? (
+              <>
+                <FavoriteBorderIcon className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                <p className="text-gray-600 text-lg font-medium">
+                  {favorites.length === 0
+                    ? "You haven't added any favorite countries yet."
+                    : "No favorite countries match your search or filters."}
+                </p>
+                <p className="text-gray-400 text-sm mt-1 mb-4">
+                  {favorites.length === 0
+                    ? "Click the heart icon on any country card to save your favorites!"
+                    : "Try adjusting your search query or clearing filters."}
+                </p>
+                <button
+                  onClick={() => setShowOnlyFavorites(false)}
+                  className="px-4 py-2 bg-[#298bd6] text-white rounded-md hover:bg-[#046bba] transition-colors"
+                >
+                  Browse All Countries
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-gray-500 text-lg">No countries found matching your criteria.</p>
+                <button
+                  onClick={resetFilters}
+                  className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-[#046bba] transition-colors"
+                >
+                  Reset Filters
+                </button>
+              </>
+            )}
           </div>
         )}
         {!loading && !error && countries.length > 0 && (
